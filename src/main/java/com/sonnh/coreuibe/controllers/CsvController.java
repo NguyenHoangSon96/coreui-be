@@ -2,10 +2,7 @@ package com.sonnh.coreuibe.controllers;
 
 import com.sonnh.coreuibe.services.CsvService;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -28,5 +25,10 @@ public class CsvController {
         var tableName = multipartFile.getOriginalFilename().replace(".csv", "");
         csvService.uploadCsvFile(multipartFile, tableName);
         return "";
+    }
+
+    @GetMapping("test")
+    public void test() throws Exception{
+        csvService.test();
     }
 }

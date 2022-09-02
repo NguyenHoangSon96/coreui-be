@@ -3,6 +3,9 @@ POST http://localhost:8080/csv/upload-csv
 Content-Type: multipart/form-data; ; boundary=boundary
 
 --boundary
-Content-Disposition: form-data; name="file"; filename="DataExport.csv"
+Content-Disposition: form-data; name="file"; filename="Product.csv"
 
-< /Users/sonnguyen/Downloads/DataExport-1661760877154.csv
+< /Users/sonnguyen/Downloads/Product.csv
+
+###
+GET http://localhost:8080/csv/test

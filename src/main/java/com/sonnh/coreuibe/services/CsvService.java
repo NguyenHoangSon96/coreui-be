@@ -1,12 +1,8 @@
 package com.sonnh.coreuibe.services;
 
-import com.opencsv.CSVReader;
 import com.sonnh.coreuibe.configs.Constant;
 import com.sonnh.coreuibe.repositories.CsvRepository;
-import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
-import org.apache.commons.lang3.ArrayUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +16,7 @@ import java.util.*;
 
 @Service
 @Transactional
+@Slf4j
 public class CsvService {
 
     final CsvRepository csvRepository;
@@ -42,17 +39,21 @@ public class CsvService {
         fileOutputStream.close();
     }
 
-    public void uploadCsvFile(MultipartFile multipartFile, String tableName) {
+    public void uploadCsvFile(MultipartFile multipartFile, String tableName) throws Exception {
         if (multipartFile == null || StringUtils.isEmpty(tableName)) {
             return;
         }
+//        saveCsvToTemp(multipartFile);
         var filePath = Constant.PATH_TEMP + multipartFile.getOriginalFilename();
         try (BufferedReader bufferedReader = Files.newBufferedReader(Paths.get(filePath))) {
-            saveCsvToTemp(multipartFile);
             var headers = getHeadersCsvFile(bufferedReader);
-            var rows = getRowsCsvFile(bufferedReader);
-            csvRepository.createTableDynamic(tableName, headers);
+            if (!csvRepository.checkIfTableExist(tableName)) {
+                csvRepository.createTableDynamic(tableName, headers);
+            }
             csvRepository.saveColumnsMeta(tableName, headers);
+
+            var rows = getRowsCsvFile(bufferedReader);
+            csvRepository.saveCsvRows(tableName, rows, headers.keySet());
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -62,8 +63,12 @@ public class CsvService {
         var firstRow = bufferedReader.readLine();
         var headers = firstRow.split(",");
 
-        Map<String, String> result = new HashMap<>();
+        Map<String, String> result = new LinkedHashMap<>();
         for (int i = 0; i < headers.length; i++) {
+            if (Objects.equals(headers[i], "Pricing Logic") || Objects.equals(headers[i], "User Group (Edit)") || Objects.equals(headers[i], "User Group (View Details)")) {
+                continue;
+            }
+
             var columnName = headers[i].toLowerCase().replace(" ", "_");
             var columnDisplayName = headers[i];
             result.put(columnName, columnDisplayName);
@@ -73,11 +78,16 @@ public class CsvService {
 
     public List<String[]> getRowsCsvFile(BufferedReader bufferedReader) throws Exception {
         List<String[]> results = new ArrayList<>();
-        while ((bufferedReader.read()) != -1) {
-            var row = bufferedReader.readLine().split(",");
-            results.add(row);
+        var row = bufferedReader.readLine();
+        while (StringUtils.isNotEmpty(row)) {
+            results.add(row.split(","));
+            row = bufferedReader.readLine();
         }
 
         return results;
+    }
+
+    public void test() throws Exception {
+//        csvRepository.saveCsvRows(List.of(), );
     }
 }
