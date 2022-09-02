@@ -78,10 +78,8 @@ public class CsvService {
 
     public List<String[]> getRowsCsvFile(BufferedReader bufferedReader) throws Exception {
         List<String[]> results = new ArrayList<>();
-        var row = bufferedReader.readLine();
-        while (StringUtils.isNotEmpty(row)) {
+        for (var row = bufferedReader.readLine(); StringUtils.isNotEmpty(row); row = bufferedReader.readLine()) {
             results.add(row.split(","));
-            row = bufferedReader.readLine();
         }
 
         return results;
