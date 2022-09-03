@@ -39,53 +39,67 @@ public class CsvService {
         fileOutputStream.close();
     }
 
-    public void uploadCsvFile(MultipartFile multipartFile, String tableName) throws Exception {
+    public void uploadCsvFile(MultipartFile multipartFile, String tableName, List<String> keys) throws Exception {
         if (multipartFile == null || StringUtils.isEmpty(tableName)) {
             return;
         }
-//        saveCsvToTemp(multipartFile);
+        saveCsvToTemp(multipartFile);
         var filePath = Constant.PATH_TEMP + multipartFile.getOriginalFilename();
         try (BufferedReader bufferedReader = Files.newBufferedReader(Paths.get(filePath))) {
-            var headers = getHeadersCsvFile(bufferedReader);
-            if (!csvRepository.checkIfTableExist(tableName)) {
-                csvRepository.createTableDynamic(tableName, headers);
-            }
-            csvRepository.saveColumnsMeta(tableName, headers);
+            var headers = bufferedReader.readLine();
+            var columnNames = getColumnCsvFile(headers);
+            var columnDisplayNames = headers.split(",");
 
-            var rows = getRowsCsvFile(bufferedReader);
-            csvRepository.saveCsvRows(tableName, rows, headers.keySet());
+            if (!csvRepository.checkIsTableExist(tableName)) {
+                csvRepository.createTableDynamic(tableName, columnNames);
+            }
+            csvRepository.saveColumnsMeta(tableName, columnNames, Arrays.stream(columnDisplayNames).toList());
+
+            List<String[]> rows = new ArrayList<>();
+            for (var row = bufferedReader.readLine(); StringUtils.isNotEmpty(row); row = bufferedReader.readLine()) {
+                rows.add(row.split(","));
+            }
+
+            var rowMaps = convertRowToMap(columnNames.stream().toList(), rows);
+            for (var row : rowMaps) {
+                csvRepository.saveOrUpdateCsvRow(tableName, keys, row);
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public Map<String, String> getHeadersCsvFile(BufferedReader bufferedReader) throws Exception {
-        var firstRow = bufferedReader.readLine();
-        var headers = firstRow.split(",");
+    public List<String> getColumnCsvFile(String firstRow) throws Exception {
+        Objects.requireNonNull(firstRow);
 
-        Map<String, String> result = new LinkedHashMap<>();
-        for (int i = 0; i < headers.length; i++) {
-            if (Objects.equals(headers[i], "Pricing Logic") || Objects.equals(headers[i], "User Group (Edit)") || Objects.equals(headers[i], "User Group (View Details)")) {
+        var headers = firstRow.split(",");
+        List<String> results = new ArrayList<>();
+        for (String header : headers) {
+            if (Objects.equals(header, "Pricing Logic") || Objects.equals(header, "User Group (Edit)") || Objects.equals(header, "User Group (View Details)")) {
                 continue;
             }
-
-            var columnName = headers[i].toLowerCase().replace(" ", "_");
-            var columnDisplayName = headers[i];
-            result.put(columnName, columnDisplayName);
+            var columnName = header.toLowerCase().replace(" ", "_");
+            results.add(columnName);
         }
-        return result;
+        return results;
     }
 
-    public List<String[]> getRowsCsvFile(BufferedReader bufferedReader) throws Exception {
-        List<String[]> results = new ArrayList<>();
-        for (var row = bufferedReader.readLine(); StringUtils.isNotEmpty(row); row = bufferedReader.readLine()) {
-            results.add(row.split(","));
+    public List<Map<String, String>> convertRowToMap(List<String> columnNames, List<String[]> rows) {
+        List<Map<String, String>> results = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            var row = rows.get(i);
+            Map<String, String> map = new LinkedHashMap<>();
+            for (int j = 0; j < columnNames.size(); j++) {
+                map.put(columnNames.get(j), row[j]);
+            }
+            results.add(map);
         }
-
         return results;
     }
 
     public void test() throws Exception {
 //        csvRepository.saveCsvRows(List.of(), );
     }
+
 }

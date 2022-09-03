@@ -1,0 +1,48 @@
+### Send POST request with json body
+POST https://httpbin.org/post
+Content-Type: application/json
+
+{
+  "id": 999,
+  "value": "content"
+}
+
+### Send POST request with body as parameters
+POST https://httpbin.org/post
+Content-Type: application/x-www-form-urlencoded
+
+id=999&value=content
+
+### Send a form with the text and file fields
+POST http://localhost:8080/csv/upload-csv
+Content-Type: multipart/form-data; name="file"; boundary=WebAppBoundary
+
+< /Users/sonnguyen/Downloads/Product.csv
+
+--WebAppBoundary
+Content-Disposition: form-data;
+Content-Type: application/json
+{
+   "keys": ["name"]
+}
+
+--WebAppBoundary
+<> 2022-09-02T162947.200.json
+<> 2022-09-02T162816.200.json
+<> 2022-09-02T162740.200.json
+<> 2022-09-02T162644.200.json
+
+### Send request with dynamic variables in request's body
+POST https://httpbin.org/post
+Content-Type: application/json
+
+{
+  "id": {{$uuid}},
+  "price": {{$randomInt}},
+  "ts": {{$timestamp}},
+  "value": "content"
+}
+
+<> 2022-09-02T163024.200.json
+
+###
