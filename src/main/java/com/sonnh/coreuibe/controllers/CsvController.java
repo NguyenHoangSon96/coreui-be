@@ -1,6 +1,7 @@
 package com.sonnh.coreuibe.controllers;
 
 import com.sonnh.coreuibe.services.CsvService;
+import com.sonnh.coreuibe.utils.PricefxClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -12,6 +13,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/csv")
+@CrossOrigin(origins = "*")
 @Slf4j
 public class CsvController {
 
@@ -21,8 +23,8 @@ public class CsvController {
         this.csvService = csvService;
     }
 
-    @PostMapping("/upload-csv")
-    public String uploadCsv(@RequestPart("file") MultipartFile multipartFile, @RequestPart(value = "keys") List<String> keys) throws Exception {
+    @PostMapping(value = "/upload-csv", consumes = "multipart/form-data")
+    public String uploadCsv(@RequestPart("file") MultipartFile multipartFile, @RequestPart(value = "keys", required = false) List<String> keys) throws Exception {
         if (multipartFile == null || StringUtils.isEmpty(multipartFile.getOriginalFilename())) {
             throw new Exception("File is empty");
         }
@@ -31,8 +33,9 @@ public class CsvController {
         return "";
     }
 
-    @GetMapping("test")
+    @GetMapping("/test")
     public void test() throws Exception {
-        csvService.test();
+        var uri = "/datamart.getfcs/DM";
+        PricefxClient.post(uri, null);
     }
 }

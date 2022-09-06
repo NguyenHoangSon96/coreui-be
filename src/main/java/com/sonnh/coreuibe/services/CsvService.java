@@ -3,13 +3,19 @@ package com.sonnh.coreuibe.services;
 import com.sonnh.coreuibe.configs.Constant;
 import com.sonnh.coreuibe.repositories.CsvRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.ListUtils;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.transaction.Transactional;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
@@ -45,15 +51,24 @@ public class CsvService {
         }
         saveCsvToTemp(multipartFile);
         var filePath = Constant.PATH_TEMP + multipartFile.getOriginalFilename();
+        List<String> columnNames;
+        List<String> headers;
         try (BufferedReader bufferedReader = Files.newBufferedReader(Paths.get(filePath))) {
-            var headers = bufferedReader.readLine();
-            var columnNames = getColumnCsvFile(headers);
-            var columnDisplayNames = headers.split(",");
+            var headersStr = bufferedReader.readLine();
+            if (StringUtils.isEmpty(headersStr)) {
+                return;
+            }
+            headers = Arrays.stream(headersStr.split(",")).toList();
+            var duplicateHeaders = findDuplicateHeaders(headers);
+            if (CollectionUtils.isNotEmpty(duplicateHeaders)) {
+                throw new Exception(String.format("Column is duplicated: [%s]", duplicateHeaders));
+            }
 
+            columnNames = getColumnCsvFile(headers);
             if (!csvRepository.checkIsTableExist(tableName)) {
                 csvRepository.createTableDynamic(tableName, columnNames);
             }
-            csvRepository.saveColumnsMeta(tableName, columnNames, Arrays.stream(columnDisplayNames).toList());
+            csvRepository.saveColumnsMeta(tableName, columnNames, headers);
 
             List<String[]> rows = new ArrayList<>();
             for (var row = bufferedReader.readLine(); StringUtils.isNotEmpty(row); row = bufferedReader.readLine()) {
@@ -70,10 +85,11 @@ public class CsvService {
         }
     }
 
-    public List<String> getColumnCsvFile(String firstRow) throws Exception {
-        Objects.requireNonNull(firstRow);
+    public List<String> getColumnCsvFile(List<String> headers) throws Exception {
+        if (CollectionUtils.isEmpty(headers)) {
+            return null;
+        }
 
-        var headers = firstRow.split(",");
         List<String> results = new ArrayList<>();
         for (String header : headers) {
             if (Objects.equals(header, "Pricing Logic") || Objects.equals(header, "User Group (Edit)") || Objects.equals(header, "User Group (View Details)")) {
@@ -102,4 +118,14 @@ public class CsvService {
 //        csvRepository.saveCsvRows(List.of(), );
     }
 
+    public List<String> findDuplicateHeaders(List<String> headers) throws Exception {
+        List<String> results = new ArrayList<>();
+        HashSet<Object> set = new HashSet<>();
+        headers.forEach(header -> {
+            if (!set.add(header)) {
+                results.add(header);
+            }
+        });
+        return results;
+    }
 }
