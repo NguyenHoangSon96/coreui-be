@@ -3,8 +3,8 @@ package com.sonnh.coreuibe;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sonnh.coreuibe.configs.Constant;
 import com.sonnh.coreuibe.services.CsvService;
+import com.sonnh.coreuibe.utils.CommonUtils;
 import okhttp3.*;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -59,6 +59,13 @@ class CoreuiBeApplicationTests {
             System.out.println(data);
         }
         response.close();
+    }
+
+    @Test
+    void testCamelToSnake() {
+        Assertions.assertEquals("export_data", CommonUtils.camelToSnake("ExportData"));
+        Assertions.assertEquals("export_data", CommonUtils.camelToSnake("exportData"));
+        Assertions.assertEquals("export_data", CommonUtils.camelToSnake("export_data"));
     }
 
 }

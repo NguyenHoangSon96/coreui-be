@@ -8,11 +8,13 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.configurationprocessor.json.JSONArray;
 
 import java.net.URL;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 public final class PricefxClient {
@@ -31,18 +33,9 @@ public final class PricefxClient {
         objectMapper = new ObjectMapper();
     }
 
-    static void get(String uri) {
-        if (StringUtils.isEmpty(uri)) {
-            return;
-        }
+    static void get(String uri) {}
 
-        String url = baseUrl + uri;
-//        Request request = new Request.Builder().url(URL.)
-
-
-    }
-
-    public static List<Map<String, Object>> post(String uri, Map<String, Object> payload) throws Exception {
+    public static Object post(String uri, Map<String, Object> payload) throws Exception {
         String userName = String.format("%s/%s:%s", Constant.PARTITION_CE, Constant.USER_NAME, Constant.PASSWORD_CE);
         String authorize = String.format("Basic %s", Base64.getEncoder().encodeToString(userName.getBytes()));
         URL url = new URL(String.format("%s/%s%s", Constant.BASE_URL, Constant.PARTITION_CE, uri));
@@ -58,7 +51,7 @@ public final class PricefxClient {
         //todo log with function name
         log.info("Url: " + url);
         log.info("Response: " + responseStr);
-        log.info("Data: " + objectMapper.writeValueAsString(datas));
+        log.info("Data: " + new JSONArray(datas));
 
         if (CollectionUtils.isEmpty(datas)) {
             return List.of();
