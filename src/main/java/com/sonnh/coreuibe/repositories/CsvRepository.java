@@ -3,8 +3,11 @@ package com.sonnh.coreuibe.repositories;
 import com.sonnh.coreuibe.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Repository;
 
@@ -100,8 +103,7 @@ public class CsvRepository {
 
     public void upsertRow(String tableName, List<String> keys, Map<String, Object> rowMap) throws Exception {
         log.info("tableName: {}, keys: {}, rowMap: {}", tableName, keys, rowMap);
-
-        if (ObjectUtils.anyNull(tableName, keys, rowMap)) {
+        if (StringUtils.isEmpty(tableName) || CollectionUtils.isEmpty(keys) || MapUtils.isEmpty(rowMap)) {
             throw new Exception("##upsertRow##: Invalid params");
         }
 
@@ -111,7 +113,7 @@ public class CsvRepository {
             stringBuilder.append(" SET");
             rowMap.forEach((k, v) -> {
                 k = CommonUtils.convertToPostgresColumnName(k);
-                stringBuilder.append(String.format("\"%s\" = '%s'", k, v));
+                stringBuilder.append(String.format("\"%s\" = '%s'", k, v.toString()));
             });
             stringBuilder.append(String.format("updated_date = %s", new Date()));
             stringBuilder.append(" WHERE");
@@ -130,13 +132,23 @@ public class CsvRepository {
                                      .stream()
                                      .map(k -> "\"" + CommonUtils.convertToPostgresColumnName(k) + "\"")
                                      .collect(Collectors.joining(","));
-            columnStr = columnStr + ",\"created_date\", \"updated_date\"";
             var rowString = rowMap.values().stream().map(r -> "'" + r + "'").collect(Collectors.joining(","));
-            rowString = rowString + String.format(", '%s', '%s'", new Date(), new Date());
             stringBuilder.append(String.format("INSERT INTO \"%s\" (%s) VALUES", tableName, columnStr));
-            stringBuilder.append(String.format(" (%s)", rowString));
-            entityManager.createNativeQuery(stringBuilder.toString())
-                         .executeUpdate();
+            stringBuilder.append("(");
+            for (int i = 0; i < rowMap.values().size(); i++) {
+                if (i != rowMap.values().size() - 1) {
+                    stringBuilder.append("?,");
+                } else {
+                    stringBuilder.append("?");
+                }
+            }
+            stringBuilder.append(")");
+            Query query = entityManager.createNativeQuery(stringBuilder.toString());
+            for (int i = 0; i < rowMap.values().size(); i++) {
+                var v = rowMap.values().stream().toList().get(i);
+                query.setParameter(i+1, v);
+            }
+            query.executeUpdate();
         }
     }
 

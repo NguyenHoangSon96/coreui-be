@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -55,17 +56,23 @@ public class CsvService {
             return;
         }
 
-        var headers = Arrays.stream(lines.get(0).split(",")).toList();
+//        var headers = Arrays.stream(lines.get(0).replace("?", "").split(",")).toList();
+        var headers = Arrays.stream(lines.get(0)
+                                         .replace("(", "")
+                                         .replace(")", "")
+                                         .split(","))
+                            .toList();
         List<String> duplicateHeaders = findDuplicateHeaders(headers);
         if (CollectionUtils.isNotEmpty(duplicateHeaders)) {
             throw new Exception("Duplicate header " + duplicateHeaders);
         }
 
+
         for (String header : headers) {
             csvRepository.upsertColumnMeta(tableName, header);
         }
 
-        var rows = lines.subList(1, lines.size() - 1).stream().map(row -> Arrays.stream(row.split(",", -1)).toList()).toList();
+        var rows = lines.subList(1, lines.size()).stream().map(row -> Arrays.stream(row.split(",", -1)).toList()).toList();
         List<Map<String, Object>> rowMaps = new ArrayList<>();
         for (List<String> row : rows) {
             var rowMap = convertCsvRowToMap(headers, row);
@@ -85,7 +92,7 @@ public class CsvService {
     }
 
     public Map<String, Object> convertCsvRowToMap(List<String> headers, List<String> rows) throws Exception {
-        HashMap<String, Object> results = new HashMap<>();
+        HashMap<String, Object> results = new LinkedHashMap<>();
         for (int i = 0; i < headers.size(); i++) {
             results.put(headers.get(i), rows.get(i));
         }
