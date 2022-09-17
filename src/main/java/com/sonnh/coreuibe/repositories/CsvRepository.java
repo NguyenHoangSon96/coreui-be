@@ -15,12 +15,14 @@ import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Repository;
 
+import javax.management.QueryExp;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.transaction.Transactional;
 import java.math.BigInteger;
 import java.net.http.HttpClient;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -112,14 +114,19 @@ public class CsvRepository {
             throw new Exception("##upsertRow##: Invalid params");
         }
 
+        List<String> columnNames = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        rowMap.forEach((k, v) -> {
+            columnNames.add(k.toLowerCase().replace(" ", "_"));
+            values.add((String) v);
+        });
+
         StringBuilder stringBuilder = new StringBuilder();
         if (isRowExist(tableName, keys, rowMap)) {
-            stringBuilder.append("UPDATE " + tableName);
-            stringBuilder.append(" SET");
+            stringBuilder.append("UPDATE ").append(tableName).append(" SET");
             for (int i = 0; i < rowMap.size(); i++) {
                 var isLastIndex = i == rowMap.keySet().size() - 1;
-                var columnName = (String) rowMap.keySet().toArray()[i];
-                stringBuilder.append(String.format(" %s = ?" + (!isLastIndex ? "," : ""), columnName.toLowerCase().replace(" ", "_")));
+                stringBuilder.append(String.format(" %s = ?" + (!isLastIndex ? "," : ""), columnNames.get(i)));
             }
             stringBuilder.append(" WHERE");
             keys.forEach(key -> {
@@ -127,12 +134,26 @@ public class CsvRepository {
             });
 
             Query query = entityManager.createNativeQuery(stringBuilder.toString());
-            for (int i = 0; i < rowMap.size(); i++) {
-                query.setParameter(i + 1, rowMap.values().toArray()[i]);
+            for (int i = 0; i < values.size(); i++) {
+                query.setParameter(i + 1, values.get(i));
             }
             query.executeUpdate();
         } else {
-            return;
+            var strColumnName = StringUtils.join(columnNames, ",");
+            stringBuilder.append(String.format("INSERT INTO \"%s\"", tableName));
+            stringBuilder.append(String.format(" (%s)", strColumnName));
+            stringBuilder.append(" VALUES");
+            stringBuilder.append("(");
+            for (int i = 0; i < values.size(); i++) {
+                var isLastItem = values.size() - 1 == i;
+                stringBuilder.append("?").append(!isLastItem ? "," : "");
+            }
+            stringBuilder.append(")");
+            Query query = entityManager.createNativeQuery(stringBuilder.toString());
+            for (int i = 0; i < values.size(); i++) {
+                query.setParameter(i + 1, values.get(i));
+            }
+            query.executeUpdate();
         }
 
     }
