@@ -1,12 +1,16 @@
 package com.sonnh.coreuibe.repositories;
 
 import com.sonnh.coreuibe.utils.CommonUtils;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Repository;
@@ -16,6 +20,7 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.transaction.Transactional;
 import java.math.BigInteger;
+import java.net.http.HttpClient;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -107,49 +112,29 @@ public class CsvRepository {
             throw new Exception("##upsertRow##: Invalid params");
         }
 
+        StringBuilder stringBuilder = new StringBuilder();
         if (isRowExist(tableName, keys, rowMap)) {
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append(String.format("UPDATE \"%s\"", tableName));
+            stringBuilder.append("UPDATE " + tableName);
             stringBuilder.append(" SET");
-            rowMap.forEach((k, v) -> {
-                k = CommonUtils.convertToPostgresColumnName(k);
-                stringBuilder.append(String.format("\"%s\" = '%s'", k, v.toString()));
-            });
-            stringBuilder.append(String.format("updated_date = %s", new Date()));
+            for (int i = 0; i < rowMap.size(); i++) {
+                var isLastIndex = i == rowMap.keySet().size() - 1;
+                var columnName = (String) rowMap.keySet().toArray()[i];
+                stringBuilder.append(String.format(" %s = ?" + (!isLastIndex ? "," : ""), columnName.toLowerCase().replace(" ", "_")));
+            }
             stringBuilder.append(" WHERE");
-            for (int i = 0; i < keys.size(); i++) {
-                var key = CommonUtils.convertToPostgresColumnName(keys.get(i));
-                if (i == (keys.size() - 1)) {
-                    stringBuilder.append(String.format("\"%s\" = '%s'", key, rowMap.get(key)));
-                } else {
-                    stringBuilder.append(String.format("\"%s\" = '%s'", key, rowMap.get(key)));
-                    stringBuilder.append(" AND");
-                }
-            }
-        } else {
-            StringBuilder stringBuilder = new StringBuilder();
-            String columnStr = rowMap.keySet()
-                                     .stream()
-                                     .map(k -> "\"" + CommonUtils.convertToPostgresColumnName(k) + "\"")
-                                     .collect(Collectors.joining(","));
-            var rowString = rowMap.values().stream().map(r -> "'" + r + "'").collect(Collectors.joining(","));
-            stringBuilder.append(String.format("INSERT INTO \"%s\" (%s) VALUES", tableName, columnStr));
-            stringBuilder.append("(");
-            for (int i = 0; i < rowMap.values().size(); i++) {
-                if (i != rowMap.values().size() - 1) {
-                    stringBuilder.append("?,");
-                } else {
-                    stringBuilder.append("?");
-                }
-            }
-            stringBuilder.append(")");
+            keys.forEach(key -> {
+                stringBuilder.append(String.format(" %s = '%s'", key.toLowerCase().replace(" ", "_"), rowMap.get(key)));
+            });
+
             Query query = entityManager.createNativeQuery(stringBuilder.toString());
-            for (int i = 0; i < rowMap.values().size(); i++) {
-                var v = rowMap.values().stream().toList().get(i);
-                query.setParameter(i+1, v);
+            for (int i = 0; i < rowMap.size(); i++) {
+                query.setParameter(i + 1, rowMap.values().toArray()[i]);
             }
             query.executeUpdate();
+        } else {
+            return;
         }
+
     }
 
     public boolean isTableExist(String tableName) {

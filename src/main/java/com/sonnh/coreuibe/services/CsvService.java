@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.validator.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -57,16 +56,29 @@ public class CsvService {
         }
 
 //        var headers = Arrays.stream(lines.get(0).replace("?", "").split(",")).toList();
-        var headers = Arrays.stream(lines.get(0)
-                                         .replace("(", "")
-                                         .replace(")", "")
-                                         .split(","))
-                            .toList();
-        List<String> duplicateHeaders = findDuplicateHeaders(headers);
+        var rawHeaders = Arrays.stream(lines.get(0)
+                                            .replace("(", "")
+                                            .replace(")", "")
+                                            .replace("?", "")
+                                            .split(",")
+                                      )
+                               .toList();
+        List<String> duplicateHeaders = findDuplicateHeaders(rawHeaders);
+        List<String> headers = new ArrayList<>();
         if (CollectionUtils.isNotEmpty(duplicateHeaders)) {
-            throw new Exception("Duplicate header " + duplicateHeaders);
+            for (String dupHeader : duplicateHeaders) {
+                for (int i = 0; i < rawHeaders.size(); i++) {
+                    var rawHeader = rawHeaders.get(i);
+                    if (Objects.equals(rawHeaders.get(i), dupHeader)) {
+                        headers.add(rawHeader + i);
+                    } else {
+                        headers.add(rawHeader);
+                    }
+                }
+            }
+        } else {
+            headers = rawHeaders;
         }
-
 
         for (String header : headers) {
             csvRepository.upsertColumnMeta(tableName, header);
@@ -87,7 +99,6 @@ public class CsvService {
         for (Map<String, Object> row : rowMaps) {
             csvRepository.upsertRow(tableName, keys, row);
         }
-
 
     }
 
