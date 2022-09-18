@@ -1,32 +1,23 @@
 package com.sonnh.coreuibe.repositories;
 
 import com.sonnh.coreuibe.utils.CommonUtils;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Validate;
-import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Repository;
 
-import javax.management.QueryExp;
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.transaction.Transactional;
 import java.math.BigInteger;
-import java.net.http.HttpClient;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Repository
 @Transactional
@@ -125,13 +116,19 @@ public class CsvRepository {
         if (isRowExist(tableName, keys, rowMap)) {
             stringBuilder.append("UPDATE ").append(tableName).append(" SET");
             for (int i = 0; i < rowMap.size(); i++) {
-                var isLastIndex = i == rowMap.keySet().size() - 1;
-                stringBuilder.append(String.format(" %s = ?" + (!isLastIndex ? "," : ""), columnNames.get(i)));
+                var isLastItem = i == rowMap.keySet().size() - 1;
+                stringBuilder.append(String.format(" %s = ?" + (!isLastItem ? "," : ""), columnNames.get(i)));
             }
             stringBuilder.append(" WHERE");
-            keys.forEach(key -> {
-                stringBuilder.append(String.format(" %s = '%s'", key.toLowerCase().replace(" ", "_"), rowMap.get(key)));
-            });
+            for (int i = 0; i < keys.size(); i++) {
+                var key = CommonUtils.convertToPostgresColumnName(keys.get(i));
+                var isLastItem = i == keys.size() - 1;
+                if (isLastItem) {
+                    stringBuilder.append(String.format(" %s = '%s'", key, rowMap.get(keys.get(i))));
+                } else {
+                    stringBuilder.append(String.format(" %s = '%s' AND", key, rowMap.get(keys.get(i))));
+                }
+            }
 
             Query query = entityManager.createNativeQuery(stringBuilder.toString());
             for (int i = 0; i < values.size(); i++) {
@@ -180,9 +177,19 @@ public class CsvRepository {
         StringBuilder stringBuilder = new StringBuilder();
         stringBuilder.append(String.format("SELECT count(*) FROM \"%s\"", tableName));
         stringBuilder.append(" WHERE");
+        for (int i = 0; i < keys.size(); i++) {
+            var isLastItem = i == keys.size() - 1;
+            var columnName = CommonUtils.convertToPostgresColumnName(keys.get(i));
+            if (isLastItem) {
+                stringBuilder.append(String.format(" \"%s\" = '%s'", columnName, rowMap.get(keys.get(i))));
+            } else {
+                stringBuilder.append(String.format(" \"%s\" = '%s' AND", columnName, rowMap.get(keys.get(i))));
+            }
+
+        }
         keys.forEach(k -> {
-            var columnName = CommonUtils.convertToPostgresColumnName(k);
-            stringBuilder.append(String.format(" \"%s\" = '%s'", columnName, rowMap.get(k)));
+
+
         });
         var count = (BigInteger) entityManager.createNativeQuery(stringBuilder.toString()).getSingleResult();
         return count.intValue() > 0;
