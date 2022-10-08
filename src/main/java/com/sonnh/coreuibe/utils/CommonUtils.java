@@ -1,8 +1,14 @@
 package com.sonnh.coreuibe.utils;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 
+import javax.xml.transform.Result;
+import java.util.Map;
+import java.util.Objects;
+
 public class CommonUtils {
+
     public static String camelToSnake(String str) {
         String result = "";
         char c = str.charAt(0);
@@ -27,5 +33,16 @@ public class CommonUtils {
         }
 
         return column.toLowerCase().replace(" ", "_");
+    }
+
+    public static Object parseJson(String json) throws Exception {
+        Object result;
+        if (StringUtils.isEmpty(json)) {
+            return null;
+        }
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        result = objectMapper.readValue(json, Object.class);
+        return result;
     }
 }
