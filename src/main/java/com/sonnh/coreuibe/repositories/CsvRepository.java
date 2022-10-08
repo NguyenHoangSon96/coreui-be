@@ -119,6 +119,7 @@ public class CsvRepository {
                 var isLastItem = i == rowMap.keySet().size() - 1;
                 stringBuilder.append(String.format(" %s = ?" + (!isLastItem ? "," : ""), columnNames.get(i)));
             }
+            stringBuilder.append(" ,updated_date = ?");
             stringBuilder.append(" WHERE");
             for (int i = 0; i < keys.size(); i++) {
                 var key = CommonUtils.convertToPostgresColumnName(keys.get(i));
@@ -131,25 +132,36 @@ public class CsvRepository {
             }
 
             Query query = entityManager.createNativeQuery(stringBuilder.toString());
+            var lastIndex = 0;
             for (int i = 0; i < values.size(); i++) {
                 query.setParameter(i + 1, values.get(i));
+                lastIndex = i + 2;
             }
+            query.setParameter(lastIndex, new Date());
             query.executeUpdate();
         } else {
             var strColumnName = StringUtils.join(columnNames, ",");
             stringBuilder.append(String.format("INSERT INTO \"%s\"", tableName));
-            stringBuilder.append(String.format(" (%s)", strColumnName));
+            stringBuilder.append(String.format(" (%s", strColumnName));
+            stringBuilder.append(" ,created_date");
+            stringBuilder.append(" ,updated_date)");
             stringBuilder.append(" VALUES");
             stringBuilder.append("(");
             for (int i = 0; i < values.size(); i++) {
                 var isLastItem = values.size() - 1 == i;
                 stringBuilder.append("?").append(!isLastItem ? "," : "");
             }
+            stringBuilder.append(" , ?");
+            stringBuilder.append(" , ?");
             stringBuilder.append(")");
             Query query = entityManager.createNativeQuery(stringBuilder.toString());
+            var lastIndex = 0;
             for (int i = 0; i < values.size(); i++) {
                 query.setParameter(i + 1, values.get(i));
+                lastIndex = i + 1;
             }
+            query.setParameter(lastIndex + 1, new Date());
+            query.setParameter(lastIndex + 2, new Date());
             query.executeUpdate();
         }
 
