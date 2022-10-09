@@ -29,15 +29,14 @@ public class CsvController {
     @PostMapping(value = "/upload-csv")
     public Map<String, Object> uploadCsv(@RequestParam("file") MultipartFile multipartFile,
                                          @RequestParam("keys") String keysStr) throws Exception {
-        throw new Exception("why");
-//        if (multipartFile == null || StringUtils.isEmpty(multipartFile.getOriginalFilename())) {
-//            throw new Exception("File is empty");
-//        }
-//
-//        List<String> keys = (List<String>) CommonUtils.parseJson(keysStr);
-//        var tableName = ((String) multipartFile.getOriginalFilename().replace(".csv", ""));
-//        csvService.uploadCsvFile(multipartFile, tableName, keys);
-//        return CommonUtils.responseObject("00", null, "Success");
+        if (multipartFile == null || StringUtils.isEmpty(multipartFile.getOriginalFilename())) {
+            throw new Exception("File is empty");
+        }
+
+        List<String> keys = (List<String>) CommonUtils.parseJson(keysStr);
+        var tableName = ((String) multipartFile.getOriginalFilename().replace(".csv", ""));
+        csvService.uploadCsvFile(multipartFile, tableName, keys);
+        return CommonUtils.responseObject("00", null, "Success");
     }
 
     @GetMapping("/bing")

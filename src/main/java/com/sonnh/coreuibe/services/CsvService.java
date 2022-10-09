@@ -81,7 +81,7 @@ public class CsvService {
         }
 
         for (String header : headers) {
-            csvRepository.upsertColumnMeta(tableName, header);
+            csvRepository.upsertColumnMeta(tableName, header, keys);
         }
 
         var rows = lines.subList(1, lines.size()).stream().map(row -> Arrays.stream(row.split(",", -1)).toList()).toList();

@@ -3,6 +3,7 @@ package com.sonnh.coreuibe.repositories;
 import com.sonnh.coreuibe.utils.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -52,7 +53,7 @@ public class CsvRepository {
         entityManager.createNativeQuery(stringBuilder.toString()).executeUpdate();
     }
 
-    public void upsertColumnMeta(String taleName, String header) throws Exception {
+    public void upsertColumnMeta(String taleName, String header, List<String> keys) throws Exception {
         if (StringUtils.isEmpty(taleName) || StringUtils.isEmpty(header)) {
             throw new Exception("##saveColumnsMeta##: Invalid params ");
         }
@@ -72,14 +73,15 @@ public class CsvRepository {
             stringBuilder.append(String.format(" AND column_name = '%s'", columnName));
             entityManager.createNativeQuery(stringBuilder.toString()).executeUpdate();
         } else {
-            stringBuilder.append("INSERT INTO \"table_meta\" (table_name, column_name, column_display_name, created_date, updated_date)");
-            stringBuilder.append("VALUES ( ?1, ?2, ?3, ?4, ?5 );");
+            stringBuilder.append("INSERT INTO \"table_meta\" (table_name, column_name, column_display_name, created_date, updated_date, is_key)");
+            stringBuilder.append(" VALUES ( ?1, ?2, ?3, ?4, ?5, ?6);");
             Query query = entityManager.createNativeQuery(stringBuilder.toString());
             query.setParameter(1, taleName);
             query.setParameter(2, columnName);
             query.setParameter(3, header);
             query.setParameter(4, new Date());
             query.setParameter(5, new Date());
+            query.setParameter(6, keys.contains(header));
             query.executeUpdate();
         }
     }
