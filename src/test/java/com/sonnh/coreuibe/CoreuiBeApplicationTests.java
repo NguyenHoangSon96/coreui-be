@@ -2,7 +2,7 @@ package com.sonnh.coreuibe;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sonnh.coreuibe.configs.Constant;
-import com.sonnh.coreuibe.services.CsvService;
+import com.sonnh.coreuibe.services.FileUploadService;
 import com.sonnh.coreuibe.utils.CommonUtils;
 import okhttp3.*;
 import org.apache.commons.lang3.ObjectUtils;
@@ -19,7 +19,7 @@ import java.util.*;
 class CoreuiBeApplicationTests {
 
     @Autowired
-    CsvService csvService;
+    FileUploadService fileUploadService;
 
     @Test
     void contextLoads() {
@@ -28,16 +28,16 @@ class CoreuiBeApplicationTests {
 
     @Test
     void testGetColumnCsvFile() throws Exception {
-        var columns = csvService.getColumnCsvFile(List.of("Product Id", "customer", "Invoice Date", ""));
+        var columns = fileUploadService.getColumnCsvFile(List.of("Product Id", "customer", "Invoice Date", ""));
         Assertions.assertArrayEquals(List.of("product_id", "customer", "invoice_date", "").toArray(), columns.toArray());
     }
 
     @Test
     void testGetColumnCsvFileFail() throws Exception {
         List<String> columns = List.of();
-        Assertions.assertNull(csvService.getColumnCsvFile(columns));
+        Assertions.assertNull(fileUploadService.getColumnCsvFile(columns));
 
-        Assertions.assertNull(csvService.getColumnCsvFile(null));
+        Assertions.assertNull(fileUploadService.getColumnCsvFile(null));
     }
 
     @Test

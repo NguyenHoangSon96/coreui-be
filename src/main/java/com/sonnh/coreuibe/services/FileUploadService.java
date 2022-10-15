@@ -1,53 +1,47 @@
 package com.sonnh.coreuibe.services;
 
 import com.sonnh.coreuibe.configs.Constant;
+import com.sonnh.coreuibe.exceptions.BussinessException;
 import com.sonnh.coreuibe.repositories.CsvRepository;
 import com.sonnh.coreuibe.repositories.IPriceFx;
 import com.sonnh.coreuibe.utils.CommonUtils;
+import com.sonnh.coreuibe.utils.FileUploadUtils;
 import lombok.extern.slf4j.Slf4j;
+import net.pricefx.restapiclient.calls.ApiManager;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.transaction.Transactional;
-import java.io.File;
 import java.nio.charset.Charset;
 import java.util.*;
 
 @Service
 @Transactional
 @Slf4j
-public class CsvService {
+public class FileUploadService {
 
     final CsvRepository csvRepository;
 
     final IPriceFx iPriceFx;
 
-
     @Autowired
-    public CsvService(CsvRepository csvRepository, IPriceFx iPriceFx) {
-
+    public FileUploadService(CsvRepository csvRepository, IPriceFx iPriceFx) {
         this.csvRepository = csvRepository;
         this.iPriceFx = iPriceFx;
     }
 
-    public void saveCsvToTemp(MultipartFile multipartFile) throws Exception {
-        if (multipartFile == null) {
-            throw new Exception("File is empty");
-        }
-        var file = new File(Constant.PATH_TEMP + multipartFile.getOriginalFilename());
-        FileUtils.writeByteArrayToFile(file, multipartFile.getBytes(), false);
-    }
-
-    public void uploadCsvFile(MultipartFile multipartFile, String tableName, List<String> keys) throws Exception {
-        if (multipartFile == null || StringUtils.isEmpty(tableName)) {
-            return;
-        }
+    public void uploadCsvFile(MultipartFile multipartFile, List<String> keys) throws Exception {
+        var tableName = ((String) Objects.requireNonNull(multipartFile.getOriginalFilename()).replace(".csv", ""));
         tableName = CommonUtils.camelToSnake(tableName);
-        saveCsvToTemp(multipartFile);
+        FileUploadUtils.saveCsvToTemp(multipartFile);
 
         var filePath = Constant.PATH_TEMP + multipartFile.getOriginalFilename();
         List<String> lines = FileUtils.readLines(FileUtils.getFile(filePath), Charset.defaultCharset());
@@ -99,6 +93,66 @@ public class CsvService {
         for (Map<String, Object> row : rowMaps) {
             csvRepository.upsertRow(tableName, keys, row);
         }
+
+    }
+
+    public void uploadExcelFile(MultipartFile multipartFile, List<String> keys) throws Exception {
+        var fileName = multipartFile.getOriginalFilename();
+        if (StringUtils.isEmpty(fileName) || CollectionUtils.isEmpty(keys) || !fileName.endsWith(".xlsx")) {
+            throw new BussinessException("Invalid params");
+        }
+
+        FileUploadUtils.saveExcelToTemp(multipartFile);
+        Workbook workbook = new XSSFWorkbook(FileUtils.getFile(Constant.PATH_TEMP + fileName));
+        Sheet sheet = workbook.getSheetAt(0);
+        Row firstRow = sheet.getRow(0);
+        List<String> headers = new ArrayList<>();
+        Iterator<Cell> headerCellIterator = firstRow.cellIterator();
+        while (headerCellIterator.hasNext()) {
+            Cell cell = headerCellIterator.next();
+            headers.add(cell.getStringCellValue());
+            log.info("header cell " + cell.getStringCellValue());
+        }
+
+
+        Iterator<Row> rowIterator = sheet.rowIterator();
+        ArrayList<Object> results = new ArrayList<>();
+        var rowIndex = 0;
+        while (rowIterator.hasNext()) {
+            if (rowIndex > 0) {
+                Row row = rowIterator.next();
+                Iterator<Cell> cellIterator = row.cellIterator();
+                LinkedHashMap<Object, Object> rowMap = new LinkedHashMap<>();
+                while (cellIterator.hasNext()) {
+                    Cell cell = cellIterator.next();
+                    var cellValue = switch (cell.getCellType()) {
+                        case STRING -> {
+                            yield cell.getStringCellValue();
+                        }
+                        case NUMERIC -> {
+                            yield cell.getNumericCellValue();
+                        }
+                        case BOOLEAN -> {
+                            yield cell.getBooleanCellValue();
+                        }
+                        case BLANK -> {
+                            yield "";
+                        }
+                        default -> throw new IllegalStateException("Unexpected value: " + cell.getCellType());
+                    };
+                    int columnIndex = cell.getColumnIndex();
+                    rowMap.put(headers.get(columnIndex), cellValue);
+                    log.info("Row " + cellValue);
+                }
+                results.add(rowMap);
+//                System.out.println(rowMap);
+            }
+            rowIndex++;
+        }
+
+        //todo sua loi con add header
+        System.out.println(results);
+        workbook.close();
 
     }
 

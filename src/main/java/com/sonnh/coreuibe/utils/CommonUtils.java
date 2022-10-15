@@ -3,10 +3,8 @@ package com.sonnh.coreuibe.utils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 
-import javax.xml.transform.Result;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public class CommonUtils {
 
@@ -47,10 +45,10 @@ public class CommonUtils {
         return result;
     }
 
-    public static Map<String, Object> responseObject(String statusCode, Object body, String message) {
+    public static Map<String, Object> responseObject(String statusCode, Object data, String message) {
         Map<String, Object> result = new HashMap<>();
         result.put("statusCode", statusCode);
-        result.put("body", body);
+        result.put("body", data);
         result.put("message", message);
         return result;
     }
